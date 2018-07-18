@@ -6,11 +6,11 @@
 
 // The Arduino two-wire interface uses a 7-bit number for the address,
 // and sets the last bit correctly based on reads and writes
-#define D_SA0_HIGH_ADDRESS                0b0011101
-#define D_SA0_LOW_ADDRESS                 0b0011110
-#define DLHC_DLM_DLH_MAG_ADDRESS          0b0011110
-#define DLHC_DLM_DLH_ACC_SA0_HIGH_ADDRESS 0b0011001
-#define DLM_DLH_ACC_SA0_LOW_ADDRESS       0b0011000
+#define D_SA0_HIGH_ADDRESS                0b0011101 // 0x1d
+#define D_SA0_LOW_ADDRESS                 0b0011110 // 0x1e
+#define DLHC_DLM_DLH_MAG_ADDRESS          0b0011110 // 0x1e
+#define DLHC_DLM_DLH_ACC_SA0_HIGH_ADDRESS 0b0011001 // 0x19
+#define DLM_DLH_ACC_SA0_LOW_ADDRESS       0b0011000 // 0x18
 
 #define TEST_REG_ERROR -1
 
@@ -440,6 +440,37 @@ void LSM303::read(void)
   readMag();
 }
 
+int LSM303::pitch(void)
+{
+  vector<float> temp_a;
+  temp_a.x = a.x;
+  temp_a.y = a.y;
+  temp_a.z = a.z;
+  // normalize
+  vector_normalize(&temp_a);
+  //vector_normalize(&m);
+  int pitch = round(atan2(temp_a.y,((temp_a.z > 0) - (temp_a.z < 0))*sqrt(pow(temp_a.x,2.0)+pow(temp_a.z,2.0)))* 180 / M_PI);
+  if (pitch < 0) pitch += 360;
+  pitch = 360 - pitch;
+  return pitch;
+}
+
+int LSM303::roll(void)
+{
+  vector<float> temp_a;
+  temp_a.x = a.x;
+  temp_a.y = a.y;
+  temp_a.z = a.z;
+  // normalize
+  vector_normalize(&temp_a);
+  //vector_normalize(&m);
+  int roll = round(atan2(-1*temp_a.x,temp_a.z)* 180 / M_PI);
+  if (roll < 0) roll += 360;
+  roll = 360 - roll;
+  return roll;
+}
+
+
 /*
 Returns the angular difference in the horizontal plane between a
 default vector and north, in degrees.
@@ -461,6 +492,7 @@ float LSM303::heading(void)
   }
 }
 
+
 void LSM303::vector_normalize(vector<float> *a)
 {
   float mag = sqrt(vector_dot(a, a));
@@ -473,6 +505,21 @@ void LSM303::vector_normalize(vector<float> *a)
 
 int LSM303::testReg(byte address, regAddr reg)
 {
+
+  #if 0
+  Wire.beginTransmission(address);
+  Wire.write(reg);
+  Wire.endTransmission(false);
+  Wire.requestFrom(address, (byte)1);
+  uint8_t value = -1;
+  while (Wire.available())
+  {
+    value = Wire.read();
+  }
+//  Wire.endTransmission();
+  return value;
+  #endif
+
   Wire.beginTransmission(address);
   Wire.write((byte)reg);
   if (Wire.endTransmission() != 0)
